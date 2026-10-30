@@ -1,0 +1,429 @@
+
+# ============================================================
+# SMART WATER MANAGEMENT — HOME ASSISTANT AUTOMATIONS
+# ============================================================
+#
+# Public portfolio example
+#
+# Technologies:
+#   Home Assistant | MQTT | ESPEasy | Sonoff
+#
+# Tank abbreviations:
+#   OHWT = Overhead Water Tank
+#   UGWT = Underground Water Tank
+#
+# Entity IDs for the OHWT pump and mobile notifications
+# are examples and must be configured for a deployment.
+#
+# These automations demonstrate the original control logic.
+# They are not independently verified fail-safe controls.
+# Hardware safety interlocks and testing are required.
+#
+# ============================================================
+
+
+# ============================================================
+# 1. OHWT FULL — PUMP CUTOFF
+# ============================================================
+
+- id: "ohwater_full_cutoff"
+  alias: "OHWT Full - Pump Cutoff"
+
+  description: >
+    Requests OHWT pump shutdown at the 95% water level.
+    Includes pump activation detection and periodic checks.
+
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.water_level_percent
+      above: 94
+      for:
+        seconds: 5
+
+    - platform: state
+      entity_id: switch.example_ohwt_pump
+      to: "on"
+      for:
+        seconds: 5
+
+    - platform: time_pattern
+      minutes: "/1"
+
+  condition:
+    - condition: state
+      entity_id: switch.example_ohwt_pump
+      state: "on"
+
+    - condition: numeric_state
+      entity_id: sensor.water_level_percent
+      above: 94
+
+  action:
+    - service: switch.turn_off
+      target:
+        entity_id: switch.example_ohwt_pump
+
+  mode: single
+
+
+# ============================================================
+# 2. OHWT LOW — AUTOMATIC PUMP START
+# ============================================================
+
+- id: "ohwater_low_start"
+  alias: "OHWT Low - Start Pump"
+
+  description: >
+    Starts the overhead tank pump when the tank remains
+    at or below 25% for two minutes.
+
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.water_level_percent
+      below: 26
+      for:
+        minutes: 2
+
+  condition:
+    - condition: state
+      entity_id: switch.example_ohwt_pump
+      state: "off"
+
+  action:
+    - service: switch.turn_on
+      target:
+        entity_id: switch.example_ohwt_pump
+
+  mode: single
+
+
+# ============================================================
+# 3. OHWT PEAK HOURS — PARTIAL FILL
+# ============================================================
+
+- id: "ohwater_peak_hours_cutoff"
+  alias: "OHWT Peak Hours - Partial Fill Cutoff"
+
+  description: >
+    Limits overhead tank filling to approximately 50%
+    between 18:00 and 22:00, with a defined priority
+    condition for underground tank filling.
+
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.water_level_percent
+      above: 49
+      for:
+        minutes: 2
+
+  condition:
+    - condition: state
+      entity_id: switch.example_ohwt_pump
+      state: "on"
+
+    - condition: time
+      after: "18:00:00"
+      before: "22:00:00"
+
+    - condition: not
+      conditions:
+        - condition: numeric_state
+          entity_id: sensor.groundwater_level_percent
+          above: 99
+
+        - condition: state
+          entity_id: switch.deep_well_pump
+          state: "on"
+
+  action:
+    - service: switch.turn_off
+      target:
+        entity_id: switch.example_ohwt_pump
+
+  mode: single
+
+
+# ============================================================
+# 4. OHWT LOW — NOTIFICATION
+# ============================================================
+
+- id: "ohwt_low_notify"
+  alias: "OHWT Low - Notify"
+
+  description: >
+    Sends a water-level notification when the overhead
+    tank remains at or below 25% for two minutes.
+
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.water_level_percent
+      below: 26
+      for:
+        minutes: 2
+
+  action:
+    - service: notify.send_message
+      target:
+        entity_id:
+          - notify.example_phone_1
+          - notify.example_phone_2
+
+      data:
+        title: "OHWT Low"
+        message: >
+          Overhead tank water level is
+          {{ states('sensor.water_level_percent') }}%.
+
+  mode: single
+
+
+# ============================================================
+# 5. OHWT HIGH — NOTIFICATION
+# ============================================================
+
+- id: "ohwt_high_notify"
+  alias: "OHWT High - Notify"
+
+  description: >
+    Sends a notification when the overhead tank
+    reaches 95% for two minutes.
+
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.water_level_percent
+      above: 94
+      for:
+        minutes: 2
+
+  action:
+    - service: notify.send_message
+      target:
+        entity_id:
+          - notify.example_phone_1
+          - notify.example_phone_2
+
+      data:
+        title: "OHWT High"
+        message: >
+          Overhead tank water level is
+          {{ states('sensor.water_level_percent') }}%.
+
+  mode: single
+
+
+# ============================================================
+# 6. UGWT LOW — NOTIFICATION
+# ============================================================
+
+- id: "ugwt_low_notify"
+  alias: "UGWT Low - Notify"
+
+  description: >
+    Sends a notification when the underground tank
+    remains at or below 25% for two minutes.
+
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.groundwater_level_percent
+      below: 26
+      for:
+        minutes: 2
+
+  action:
+    - service: notify.send_message
+      target:
+        entity_id:
+          - notify.example_phone_1
+          - notify.example_phone_2
+
+      data:
+        title: "UGWT Low"
+        message: >
+          Underground tank water level is
+          {{ states('sensor.groundwater_level_percent') }}%.
+
+  mode: single
+
+
+# ============================================================
+# 7. UGWT PRIORITY LOW — REPEATING NOTIFICATION
+# ============================================================
+
+- id: "ugwt_priority_low_notify"
+  alias: "UGWT Priority Low - Repeating Notification"
+
+  description: >
+    Sends a notification when the underground tank
+    falls below 50% and repeats every 15 minutes
+    while the condition remains active.
+
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.groundwater_level_percent
+      below: 50
+
+    - platform: time_pattern
+      minutes: "/15"
+
+  condition:
+    - condition: numeric_state
+      entity_id: sensor.groundwater_level_percent
+      below: 50
+
+  action:
+    - service: notify.send_message
+      target:
+        entity_id:
+          - notify.example_phone_1
+          - notify.example_phone_2
+
+      data:
+        title: "UGWT Priority Low"
+        message: >
+          Underground tank water level is
+          {{ states('sensor.groundwater_level_percent') }}%.
+          Water level is below 50%.
+
+  mode: single
+
+
+# ============================================================
+# 8. UGWT HIGH — NOTIFICATION
+# ============================================================
+
+- id: "ugwt_high_notify"
+  alias: "UGWT High - Notify"
+
+  description: >
+    Sends a notification when the underground
+    tank reaches 95% for two minutes.
+
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.groundwater_level_percent
+      above: 94
+      for:
+        minutes: 2
+
+  action:
+    - service: notify.send_message
+      target:
+        entity_id:
+          - notify.example_phone_1
+          - notify.example_phone_2
+
+      data:
+        title: "UGWT High"
+        message: >
+          Underground tank water level is
+          {{ states('sensor.groundwater_level_percent') }}%.
+
+  mode: single
+
+
+# ============================================================
+# 9. UGWT FULL — DEEP WELL PUMP CUTOFF
+# ============================================================
+
+- id: "deepwell_full_cutoff"
+  alias: "UGWT Full - Deep Well Pump Cutoff"
+
+  description: >
+    Requests deep-well pump shutdown at the
+    underground tank's 100% level.
+    Includes pump activation and periodic checks.
+
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.groundwater_level_percent
+      above: 99
+      for:
+        seconds: 5
+
+    - platform: state
+      entity_id: switch.deep_well_pump
+      to: "on"
+      for:
+        seconds: 5
+
+    - platform: numeric_state
+      entity_id: sensor.water_level_percent
+      above: 94
+      for:
+        seconds: 5
+
+    - platform: time_pattern
+      minutes: "/1"
+
+  condition:
+    - condition: state
+      entity_id: switch.deep_well_pump
+      state: "on"
+
+    - condition: numeric_state
+      entity_id: sensor.groundwater_level_percent
+      above: 99
+
+  action:
+    - service: switch.turn_off
+      target:
+        entity_id: switch.deep_well_pump
+
+  mode: single
+
+
+# ============================================================
+# 10. CROSS-TANK PRIORITY FILLING
+# ============================================================
+
+- id: "ohwt_priority_fill_when_ugwt_full"
+  alias: "OHWT Priority Fill - UGWT Full"
+
+  description: >
+    Requests priority overhead tank filling when
+    the overhead tank is at or below 20%,
+    the underground tank is at 100%,
+    and the deep-well pump is running.
+
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.water_level_percent
+      below: 21
+      for:
+        seconds: 5
+
+    - platform: numeric_state
+      entity_id: sensor.groundwater_level_percent
+      above: 99
+      for:
+        seconds: 5
+
+    - platform: state
+      entity_id: switch.deep_well_pump
+      to: "on"
+      for:
+        seconds: 5
+
+  condition:
+    - condition: numeric_state
+      entity_id: sensor.water_level_percent
+      below: 21
+
+    - condition: numeric_state
+      entity_id: sensor.groundwater_level_percent
+      above: 99
+
+    - condition: state
+      entity_id: switch.deep_well_pump
+      state: "on"
+
+    - condition: state
+      entity_id: switch.example_ohwt_pump
+      state: "off"
+
+  action:
+    - service: switch.turn_on
+      target:
+        entity_id: switch.example_ohwt_pump
+
+  mode: single
