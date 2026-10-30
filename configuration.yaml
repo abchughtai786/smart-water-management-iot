@@ -1,0 +1,263 @@
+
+# ============================================================
+# SMART WATER MANAGEMENT — HOME ASSISTANT CONFIGURATION
+# ============================================================
+#
+# Public portfolio example
+#
+# Integrations:
+# - Home Assistant
+# - MQTT / Mosquitto
+# - ESPEasy
+# - Sonoff
+# - REST-based pump monitoring
+#
+# This file uses example device identifiers and MQTT topics.
+# Real pump-control endpoints belong in private secrets.yaml.
+#
+# Not intended for direct deployment without configuration,
+# validation, and appropriate hardware safety protections.
+# ============================================================
+
+homeassistant:
+  name: Smart Water Management
+
+logger:
+  default: warning
+
+
+# ============================================================
+# MQTT — UNDERGROUND WATER TANK MONITORING
+# ============================================================
+
+mqtt:
+  binary_sensor:
+
+    # Underground Tank Device Connectivity
+
+    - name: "GroundWater Online"
+      unique_id: demo_groundwater_online
+      state_topic: "home/water/underground/status"
+      payload_on: "Online"
+      payload_off: "Offline"
+      device_class: connectivity
+      device:
+        identifiers: ["demo_groundwater"]
+        name: "GroundWater Controller"
+
+    # Underground Tank — 25% Sensor
+
+    - name: "GroundWater R25"
+      unique_id: demo_groundwater_r25
+      state_topic: "home/water/underground/r25"
+      payload_on: "1"
+      payload_off: "0"
+      device:
+        identifiers: ["demo_groundwater"]
+        name: "GroundWater Controller"
+
+    # Underground Tank — 50% Sensor
+
+    - name: "GroundWater R50"
+      unique_id: demo_groundwater_r50
+      state_topic: "home/water/underground/r50"
+      payload_on: "1"
+      payload_off: "0"
+      device:
+        identifiers: ["demo_groundwater"]
+        name: "GroundWater Controller"
+
+    # Underground Tank — 75% Sensor
+
+    - name: "GroundWater R75"
+      unique_id: demo_groundwater_r75
+      state_topic: "home/water/underground/r75"
+      payload_on: "1"
+      payload_off: "0"
+      device:
+        identifiers: ["demo_groundwater"]
+        name: "GroundWater Controller"
+
+    # Underground Tank — 95% Sensor
+
+    - name: "GroundWater R95"
+      unique_id: demo_groundwater_r95
+      state_topic: "home/water/underground/r95"
+      payload_on: "1"
+      payload_off: "0"
+      device:
+        identifiers: ["demo_groundwater"]
+        name: "GroundWater Controller"
+
+    # Underground Tank — 100% Sensor
+
+    - name: "GroundWater R100"
+      unique_id: demo_groundwater_r100
+      state_topic: "home/water/underground/r100"
+      payload_on: "1"
+      payload_off: "0"
+      device:
+        identifiers: ["demo_groundwater"]
+        name: "GroundWater Controller"
+
+
+    # ========================================================
+    # MQTT — DEEP WELL PUMP MONITORING
+    # ========================================================
+
+    - name: "Pump Relay State"
+      unique_id: demo_pump_relay_state
+      state_topic: "home/pump/relay"
+      payload_on: "1"
+      payload_off: "0"
+      device:
+        identifiers: ["demo_pump"]
+        name: "Deep Well Pump Monitor"
+
+    - name: "Pump Online"
+      unique_id: demo_pump_online
+      state_topic: "home/pump/status"
+      payload_on: "Online"
+      payload_off: "Offline"
+      device_class: connectivity
+      device:
+        identifiers: ["demo_pump"]
+        name: "Deep Well Pump Monitor"
+
+
+  # ==========================================================
+  # MQTT — ELECTRICAL TELEMETRY
+  # ==========================================================
+
+  sensor:
+
+    # Voltage
+
+    - name: "Pump Voltage"
+      unique_id: demo_pump_voltage
+      state_topic: "home/pump/voltage"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      device:
+        identifiers: ["demo_pump"]
+        name: "Deep Well Pump Monitor"
+
+    # Power
+
+    - name: "Pump Power"
+      unique_id: demo_pump_power
+      state_topic: "home/pump/power"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      device:
+        identifiers: ["demo_pump"]
+        name: "Deep Well Pump Monitor"
+
+    # Current
+
+    - name: "Pump Current"
+      unique_id: demo_pump_current
+      state_topic: "home/pump/current"
+      unit_of_measurement: "A"
+      device_class: current
+      state_class: measurement
+      device:
+        identifiers: ["demo_pump"]
+        name: "Deep Well Pump Monitor"
+
+
+# ============================================================
+# REST — DEEP WELL PUMP CONTROL
+# ============================================================
+#
+# Pump-control URLs are stored in private secrets.yaml.
+# Never publish real endpoints or credentials.
+#
+# Required private secret keys:
+#   demo_pump_on_url
+#   demo_pump_off_url
+#   demo_pump_status_url
+#
+# These examples require additional configuration and
+# are not usable without the referenced secret values.
+# ============================================================
+
+rest_command:
+
+  demo_pump_on:
+    url: !secret demo_pump_on_url
+    method: get
+
+  demo_pump_off:
+    url: !secret demo_pump_off_url
+    method: get
+
+
+# ============================================================
+# REST — PUMP STATE MONITORING
+# ============================================================
+
+rest:
+
+  - resource: !secret demo_pump_status_url
+    scan_interval: 10
+
+    sensor:
+
+      - name: "Deep Well Pump GPIO State"
+        unique_id: demo_pump_gpio_state
+        value_template: "{{ value_json.state }}"
+
+
+# ============================================================
+# TEMPLATE — DEEP WELL PUMP SWITCH
+# ============================================================
+#
+# The switch is unavailable if its status cannot be
+# interpreted as a valid relay state.
+#
+# Software feedback is not a physical safety interlock.
+# ============================================================
+
+template:
+
+  - switch:
+
+      - name: "Deep Well Pump"
+        unique_id: demo_deep_well_pump
+
+        availability: >-
+          {{ states('sensor.deep_well_pump_gpio_state')
+             in ['0', '1'] }}
+
+        state: >-
+          {{ states('sensor.deep_well_pump_gpio_state')
+             == '1' }}
+
+        turn_on:
+          - action: rest_command.demo_pump_on
+
+        turn_off:
+          - action: rest_command.demo_pump_off
+
+
+# ============================================================
+# HOME ASSISTANT FEATURES
+# ============================================================
+
+recorder:
+
+history:
+
+logbook:
+
+mobile_app:
+
+
+# ============================================================
+# AUTOMATIONS
+# ============================================================
+
+automation: !include automations.yaml
