@@ -1,0 +1,43 @@
+
+# Home Assistant sensitive configuration
+secrets.yaml
+.storage/
+.cloud/
+.auth
+*.token
+
+# Environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# Databases and logs
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.log
+*.log.*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+
+# Backups and temporary files
+*.bak
+*.tmp
+*.swp
+*.backup
