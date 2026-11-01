@@ -1,0 +1,41 @@
+name: Validate configuration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  yamllint:
+    name: YAML lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install yamllint
+      - run: yamllint .
+
+  entity-check:
+    name: Entity references
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install pyyaml
+      - run: python scripts/check_entities.py
+
+  home-assistant:
+    name: Home Assistant config check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use example secrets
+        run: cp secrets.yaml.example secrets.yaml
+      - name: Run Home Assistant check_config
+        run: >
+          docker run --rm -v "$PWD":/config
+          ghcr.io/home-assistant/home-assistant:stable
+          python -m homeassistant --script check_config --config /config

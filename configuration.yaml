@@ -1,22 +1,16 @@
-
 # ============================================================
-# SMART WATER MANAGEMENT — HOME ASSISTANT CONFIGURATION
+# SMART WATER MANAGEMENT - HOME ASSISTANT CONFIGURATION
 # ============================================================
 #
-# Public portfolio example
+# Public portfolio example. MQTT topics and device names are
+# generic examples; pump-control URLs live in secrets.yaml
+# (see secrets.yaml.example).
 #
-# Integrations:
-# - Home Assistant
-# - MQTT / Mosquitto
-# - ESPEasy
-# - Sonoff
-# - REST-based pump monitoring
+# Tank abbreviations:
+#   OHWT = Overhead Water Tank     UGWT = Underground Water Tank
 #
-# This file uses example device identifiers and MQTT topics.
-# Real pump-control endpoints belong in private secrets.yaml.
-#
-# Not intended for direct deployment without configuration,
-# validation, and appropriate hardware safety protections.
+# Not intended for direct deployment without adaptation,
+# validation and hardware safety protections.
 # ============================================================
 
 homeassistant:
@@ -25,239 +19,350 @@ homeassistant:
 logger:
   default: warning
 
+recorder:
+history:
+logbook:
+mobile_app:
+
+automation: !include automations.yaml
+
 
 # ============================================================
-# MQTT — UNDERGROUND WATER TANK MONITORING
+# MQTT - TANK SENSORS, PUMP TELEMETRY, GEYSER
 # ============================================================
+#
+# Every sensor uses its controller's status topic for
+# availability: when a controller goes offline, its readings
+# become "unavailable" instead of showing stale values, and
+# the failsafe automations stop the pumps.
 
 mqtt:
   binary_sensor:
 
-    # Underground Tank Device Connectivity
+    # --- Underground tank controller (float switches) ---
 
-    - name: "GroundWater Online"
-      unique_id: demo_groundwater_online
+    - name: "UGWT Online"
+      unique_id: ugwt_online
       state_topic: "home/water/underground/status"
       payload_on: "Online"
       payload_off: "Offline"
       device_class: connectivity
-      device:
-        identifiers: ["demo_groundwater"]
-        name: "GroundWater Controller"
 
-    # Underground Tank — 25% Sensor
-
-    - name: "GroundWater R25"
-      unique_id: demo_groundwater_r25
+    - name: "UGWT R25"
+      unique_id: ugwt_r25
       state_topic: "home/water/underground/r25"
       payload_on: "1"
       payload_off: "0"
-      device:
-        identifiers: ["demo_groundwater"]
-        name: "GroundWater Controller"
+      availability_topic: "home/water/underground/status"
+      payload_available: "Online"
+      payload_not_available: "Offline"
 
-    # Underground Tank — 50% Sensor
-
-    - name: "GroundWater R50"
-      unique_id: demo_groundwater_r50
+    - name: "UGWT R50"
+      unique_id: ugwt_r50
       state_topic: "home/water/underground/r50"
       payload_on: "1"
       payload_off: "0"
-      device:
-        identifiers: ["demo_groundwater"]
-        name: "GroundWater Controller"
+      availability_topic: "home/water/underground/status"
+      payload_available: "Online"
+      payload_not_available: "Offline"
 
-    # Underground Tank — 75% Sensor
-
-    - name: "GroundWater R75"
-      unique_id: demo_groundwater_r75
+    - name: "UGWT R75"
+      unique_id: ugwt_r75
       state_topic: "home/water/underground/r75"
       payload_on: "1"
       payload_off: "0"
-      device:
-        identifiers: ["demo_groundwater"]
-        name: "GroundWater Controller"
+      availability_topic: "home/water/underground/status"
+      payload_available: "Online"
+      payload_not_available: "Offline"
 
-    # Underground Tank — 95% Sensor
-
-    - name: "GroundWater R95"
-      unique_id: demo_groundwater_r95
+    - name: "UGWT R95"
+      unique_id: ugwt_r95
       state_topic: "home/water/underground/r95"
       payload_on: "1"
       payload_off: "0"
-      device:
-        identifiers: ["demo_groundwater"]
-        name: "GroundWater Controller"
+      availability_topic: "home/water/underground/status"
+      payload_available: "Online"
+      payload_not_available: "Offline"
 
-    # Underground Tank — 100% Sensor
-
-    - name: "GroundWater R100"
-      unique_id: demo_groundwater_r100
+    - name: "UGWT R100"
+      unique_id: ugwt_r100
       state_topic: "home/water/underground/r100"
       payload_on: "1"
       payload_off: "0"
-      device:
-        identifiers: ["demo_groundwater"]
-        name: "GroundWater Controller"
+      availability_topic: "home/water/underground/status"
+      payload_available: "Online"
+      payload_not_available: "Offline"
 
+    # --- Overhead tank controller (float switches) ---
 
-    # ========================================================
-    # MQTT — DEEP WELL PUMP MONITORING
-    # ========================================================
+    - name: "OHWT Online"
+      unique_id: ohwt_online
+      state_topic: "home/water/overhead/status"
+      payload_on: "Online"
+      payload_off: "Offline"
+      device_class: connectivity
 
-    - name: "Pump Relay State"
-      unique_id: demo_pump_relay_state
-      state_topic: "home/pump/relay"
+    - name: "OHWT R5"
+      unique_id: ohwt_r5
+      state_topic: "home/water/overhead/r5"
       payload_on: "1"
       payload_off: "0"
-      device:
-        identifiers: ["demo_pump"]
-        name: "Deep Well Pump Monitor"
+      availability_topic: "home/water/overhead/status"
+      payload_available: "Online"
+      payload_not_available: "Offline"
 
-    - name: "Pump Online"
-      unique_id: demo_pump_online
+    - name: "OHWT R25"
+      unique_id: ohwt_r25
+      state_topic: "home/water/overhead/r25"
+      payload_on: "1"
+      payload_off: "0"
+      availability_topic: "home/water/overhead/status"
+      payload_available: "Online"
+      payload_not_available: "Offline"
+
+    - name: "OHWT R50"
+      unique_id: ohwt_r50
+      state_topic: "home/water/overhead/r50"
+      payload_on: "1"
+      payload_off: "0"
+      availability_topic: "home/water/overhead/status"
+      payload_available: "Online"
+      payload_not_available: "Offline"
+
+    - name: "OHWT R75"
+      unique_id: ohwt_r75
+      state_topic: "home/water/overhead/r75"
+      payload_on: "1"
+      payload_off: "0"
+      availability_topic: "home/water/overhead/status"
+      payload_available: "Online"
+      payload_not_available: "Offline"
+
+    - name: "OHWT R95"
+      unique_id: ohwt_r95
+      state_topic: "home/water/overhead/r95"
+      payload_on: "1"
+      payload_off: "0"
+      availability_topic: "home/water/overhead/status"
+      payload_available: "Online"
+      payload_not_available: "Offline"
+
+    - name: "OHWT R100"
+      unique_id: ohwt_r100
+      state_topic: "home/water/overhead/r100"
+      payload_on: "1"
+      payload_off: "0"
+      availability_topic: "home/water/overhead/status"
+      payload_available: "Online"
+      payload_not_available: "Offline"
+
+    # --- Deep-well pump monitor ---
+
+    - name: "Deep Well Pump Monitor Online"
+      unique_id: deep_well_pump_monitor_online
       state_topic: "home/pump/status"
       payload_on: "Online"
       payload_off: "Offline"
       device_class: connectivity
-      device:
-        identifiers: ["demo_pump"]
-        name: "Deep Well Pump Monitor"
 
+    # --- Geyser controller ---
 
-  # ==========================================================
-  # MQTT — ELECTRICAL TELEMETRY
-  # ==========================================================
+    - name: "Geyser Online"
+      unique_id: geyser_online
+      state_topic: "home/geyser/status"
+      payload_on: "Online"
+      payload_off: "Offline"
+      device_class: connectivity
+
+  # OHWT pump: Sonoff POWR2 smart switch with power metering.
+  switch:
+    - name: "OHWT Pump"
+      unique_id: ohwt_pump
+      command_topic: "home/ohwt_pump/set"
+      state_topic: "home/ohwt_pump/state"
+      payload_on: "ON"
+      payload_off: "OFF"
+      availability_topic: "home/ohwt_pump/status"
+      payload_available: "Online"
+      payload_not_available: "Offline"
 
   sensor:
 
-    # Voltage
+    # --- OHWT pump electrical telemetry (Sonoff POWR2) ---
 
-    - name: "Pump Voltage"
-      unique_id: demo_pump_voltage
+    - name: "OHWT Pump Voltage"
+      unique_id: ohwt_pump_voltage
+      state_topic: "home/ohwt_pump/voltage"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      availability_topic: "home/ohwt_pump/status"
+      payload_available: "Online"
+      payload_not_available: "Offline"
+
+    - name: "OHWT Pump Current"
+      unique_id: ohwt_pump_current
+      state_topic: "home/ohwt_pump/current"
+      unit_of_measurement: "A"
+      device_class: current
+      state_class: measurement
+      availability_topic: "home/ohwt_pump/status"
+      payload_available: "Online"
+      payload_not_available: "Offline"
+
+    - name: "OHWT Pump Power"
+      unique_id: ohwt_pump_power
+      state_topic: "home/ohwt_pump/power"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      availability_topic: "home/ohwt_pump/status"
+      payload_available: "Online"
+      payload_not_available: "Offline"
+
+    # --- Deep-well pump electrical telemetry ---
+
+    - name: "Deep Well Pump Voltage"
+      unique_id: deep_well_pump_voltage
       state_topic: "home/pump/voltage"
       unit_of_measurement: "V"
       device_class: voltage
       state_class: measurement
-      device:
-        identifiers: ["demo_pump"]
-        name: "Deep Well Pump Monitor"
+      availability_topic: "home/pump/status"
+      payload_available: "Online"
+      payload_not_available: "Offline"
 
-    # Power
-
-    - name: "Pump Power"
-      unique_id: demo_pump_power
-      state_topic: "home/pump/power"
-      unit_of_measurement: "W"
-      device_class: power
-      state_class: measurement
-      device:
-        identifiers: ["demo_pump"]
-        name: "Deep Well Pump Monitor"
-
-    # Current
-
-    - name: "Pump Current"
-      unique_id: demo_pump_current
+    - name: "Deep Well Pump Current"
+      unique_id: deep_well_pump_current
       state_topic: "home/pump/current"
       unit_of_measurement: "A"
       device_class: current
       state_class: measurement
-      device:
-        identifiers: ["demo_pump"]
-        name: "Deep Well Pump Monitor"
+      availability_topic: "home/pump/status"
+      payload_available: "Online"
+      payload_not_available: "Offline"
+
+    - name: "Deep Well Pump Power"
+      unique_id: deep_well_pump_power
+      state_topic: "home/pump/power"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      availability_topic: "home/pump/status"
+      payload_available: "Online"
+      payload_not_available: "Offline"
+
+    # --- Geyser temperatures ---
+
+    - name: "Geyser Water Temperature"
+      unique_id: geyser_water_temperature
+      state_topic: "home/geyser/water_temperature"
+      unit_of_measurement: "°C"
+      device_class: temperature
+      state_class: measurement
+      availability_topic: "home/geyser/status"
+      payload_available: "Online"
+      payload_not_available: "Offline"
+
+    - name: "Geyser Body Temperature"
+      unique_id: geyser_body_temperature
+      state_topic: "home/geyser/body_temperature"
+      unit_of_measurement: "°C"
+      device_class: temperature
+      state_class: measurement
+      availability_topic: "home/geyser/status"
+      payload_available: "Online"
+      payload_not_available: "Offline"
 
 
 # ============================================================
-# REST — DEEP WELL PUMP CONTROL
-# ============================================================
-#
-# Pump-control URLs are stored in private secrets.yaml.
-# Never publish real endpoints or credentials.
-#
-# Required private secret keys:
-#   demo_pump_on_url
-#   demo_pump_off_url
-#   demo_pump_status_url
-#
-# These examples require additional configuration and
-# are not usable without the referenced secret values.
-# ============================================================
-
-rest_command:
-
-  demo_pump_on:
-    url: !secret demo_pump_on_url
-    method: get
-
-  demo_pump_off:
-    url: !secret demo_pump_off_url
-    method: get
-
-
-# ============================================================
-# REST — PUMP STATE MONITORING
-# ============================================================
-
-rest:
-
-  - resource: !secret demo_pump_status_url
-    scan_interval: 10
-
-    sensor:
-
-      - name: "Deep Well Pump GPIO State"
-        unique_id: demo_pump_gpio_state
-        value_template: "{{ value_json.state }}"
-
-
-# ============================================================
-# TEMPLATE — DEEP WELL PUMP SWITCH
-# ============================================================
-#
-# The switch is unavailable if its status cannot be
-# interpreted as a valid relay state.
-#
-# Software feedback is not a physical safety interlock.
+# TEMPLATES - WATER LEVELS AND DEEP-WELL PUMP SWITCH
 # ============================================================
 
 template:
 
+  # The highest float switch that reports water gives the level.
+  # Discrete steps, not a continuous volume measurement.
+  - sensor:
+
+      - name: "OHWT Level"
+        unique_id: ohwt_level
+        unit_of_measurement: "%"
+        state_class: measurement
+        availability: "{{ is_state('binary_sensor.ohwt_online', 'on') }}"
+        state: >-
+          {% if is_state('binary_sensor.ohwt_r100', 'on') %}100
+          {% elif is_state('binary_sensor.ohwt_r95', 'on') %}95
+          {% elif is_state('binary_sensor.ohwt_r75', 'on') %}75
+          {% elif is_state('binary_sensor.ohwt_r50', 'on') %}50
+          {% elif is_state('binary_sensor.ohwt_r25', 'on') %}25
+          {% elif is_state('binary_sensor.ohwt_r5', 'on') %}5
+          {% else %}0{% endif %}
+
+      - name: "UGWT Level"
+        unique_id: ugwt_level
+        unit_of_measurement: "%"
+        state_class: measurement
+        availability: "{{ is_state('binary_sensor.ugwt_online', 'on') }}"
+        state: >-
+          {% if is_state('binary_sensor.ugwt_r100', 'on') %}100
+          {% elif is_state('binary_sensor.ugwt_r95', 'on') %}95
+          {% elif is_state('binary_sensor.ugwt_r75', 'on') %}75
+          {% elif is_state('binary_sensor.ugwt_r50', 'on') %}50
+          {% elif is_state('binary_sensor.ugwt_r25', 'on') %}25
+          {% else %}0{% endif %}
+
+  # Deep-well pump: an ESPEasy relay controlled over HTTP.
+  # The switch is unavailable unless the relay reports a valid
+  # state. Software feedback is not a physical safety interlock.
   - switch:
 
       - name: "Deep Well Pump"
-        unique_id: demo_deep_well_pump
-
+        unique_id: deep_well_pump
         availability: >-
-          {{ states('sensor.deep_well_pump_gpio_state')
-             in ['0', '1'] }}
-
+          {{ states('sensor.deep_well_pump_relay_state') in ['0', '1'] }}
         state: >-
-          {{ states('sensor.deep_well_pump_gpio_state')
-             == '1' }}
-
+          {{ is_state('sensor.deep_well_pump_relay_state', '1') }}
         turn_on:
-          - action: rest_command.demo_pump_on
-
+          - action: rest_command.deep_well_pump_on
         turn_off:
-          - action: rest_command.demo_pump_off
+          - action: rest_command.deep_well_pump_off
 
 
 # ============================================================
-# HOME ASSISTANT FEATURES
+# REST - DEEP-WELL PUMP RELAY (URLs in secrets.yaml)
 # ============================================================
 
-recorder:
+rest_command:
+  deep_well_pump_on:
+    url: !secret deep_well_pump_on_url
+    method: get
+    timeout: 10
+  deep_well_pump_off:
+    url: !secret deep_well_pump_off_url
+    method: get
+    timeout: 10
 
-history:
-
-logbook:
-
-mobile_app:
+rest:
+  - resource: !secret deep_well_pump_status_url
+    scan_interval: 10
+    timeout: 5
+    sensor:
+      - name: "Deep Well Pump Relay State"
+        unique_id: deep_well_pump_relay_state
+        value_template: "{{ value_json.state }}"
 
 
 # ============================================================
-# AUTOMATIONS
+# NOTIFICATIONS - one group for all family phones
 # ============================================================
+#
+# Replace the mobile_app_* names with your own devices
+# (Settings > Devices > Mobile App).
 
-automation: !include automations.yaml
+notify:
+  - platform: group
+    name: family_phones
+    services:
+      - action: mobile_app_phone_1
+      - action: mobile_app_phone_2

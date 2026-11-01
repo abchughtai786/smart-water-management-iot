@@ -1,512 +1,94 @@
+# Smart Water Management (Home IoT)
 
-# Smart Water Management & Home IoT Automation
+[![Validate configuration](https://github.com/abchughtai786/smart-water-management-iot/actions/workflows/validate.yml/badge.svg)](https://github.com/abchughtai786/smart-water-management-iot/actions/workflows/validate.yml)
+![Home Assistant](https://img.shields.io/badge/Home%20Assistant-YAML-41BDF5?logo=homeassistant&logoColor=white)
+![MQTT](https://img.shields.io/badge/MQTT-Mosquitto-660066?logo=eclipsemosquitto&logoColor=white)
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow)](LICENSE)
 
-### Home Assistant | ESP8266/ESP32 | MQTT | Linux | Sonoff | ESPEasy
+A real home IoT system that monitors two water tanks and runs the pumps automatically. Float-switch sensors on ESP8266/ESP32 boards report water levels over MQTT to Home Assistant, which fills the tanks, protects the pumps and sends phone alerts.
 
-A practical Home IoT automation project built to monitor water storage tanks, automate water pump operations, track electrical measurements, and manage connected devices through a centralised Home Assistant dashboard.
+## Highlights
 
-The system integrates embedded controllers, float-switch sensors, MQTT communication, smart relays, and a Linux-based automation server.
+- 💧 **Automatic filling**: the rooftop tank refills itself when low and stops when full
+- 🛡️ **Pump protection**: dry-run protection, a maximum runtime, and an automatic stop if a sensor goes offline
+- ⚡ **Power monitoring**: live voltage, current and power for both pumps
+- 🌙 **Peak-hour rules**: partial filling between 18:00 and 22:00, with a smart exception
+- 📱 **Phone alerts**: low and high water levels, and every safety stop
+- ✅ **Validated automatically**: every change is checked with Home Assistant's own config checker on GitHub Actions
 
-**Project Status:** Active Development
+## How it works
 
-> This repository is a technical portfolio showcasing the system architecture, automation logic, and example configurations used in a real-world home IoT project.
+```mermaid
+flowchart LR
+    U[Underground tank<br/>float switches] --> E1[ESP board<br/>ESPEasy]
+    O[Rooftop tank<br/>float switches] --> E2[ESP board<br/>ESPEasy]
+    E1 -- MQTT --> M[Mosquitto broker]
+    E2 -- MQTT --> M
+    P1[Rooftop pump<br/>Sonoff POWR2] -- power data --> M
+    M --> HA[Home Assistant<br/>Linux + Docker]
+    HA --> D[Dashboards]
+    HA --> N[Phone alerts]
+    HA -- MQTT --> P1
+    HA -- HTTP --> P2[Deep-well pump<br/>relay]
 
----
+    classDef ha fill:#d6f0ff,stroke:#0969da,color:#0a2540
+    classDef pump fill:#d1f7d6,stroke:#2da44e,color:#0b3d17
+    class HA ha
+    class P1,P2 pump
+```
 
-## Project Overview
+1. Float switches at fixed heights tell the ESP boards how full each tank is.
+2. The boards publish the readings over MQTT.
+3. Home Assistant turns them into a level (for example, 50%) and runs the automations.
+4. Pumps are switched over MQTT (Sonoff) or HTTP (ESPEasy relay).
 
-The goal of this project is to create an integrated home automation environment where multiple IoT devices can communicate with a central server and perform automated operations based on sensor readings.
+## Automations
 
-### Key Features
-
-- Underground Water Tank (UGWT) monitoring
-- Overhead Water Tank (OHWT) monitoring
-- Automated water pump control
-- Water-level-based automation
-- Peak-hour pump management
-- MQTT-based device communication
-- Electrical voltage, current, and power monitoring
-- Mobile notifications and alerts
-- Device connectivity monitoring
-- Centralised Home Assistant dashboards
-- Historical sensor data and activity logs
-- Geyser temperature and status monitoring
-
-The system combines hardware sensors, communication protocols, and software automation into a single monitoring and control environment.
-
----
-
-## Technology Stack
-
-| Category | Technology |
+| Automation | What it does |
 |---|---|
-| Server OS | Linux |
-| Home Automation | Home Assistant |
-| Deployment | Docker |
-| Microcontrollers | ESP8266 / ESP32 |
-| IoT Firmware | ESPEasy |
-| MQTT Broker | Eclipse Mosquitto |
-| Communication | MQTT, HTTP, REST |
-| Smart Switches | Sonoff POWR2 |
-| Water Sensors | Multi-level float switches |
-| Configuration | YAML |
-| Monitoring | Home Assistant Dashboards |
-| Data History | Home Assistant Recorder |
-| Version Control | Git & GitHub |
-
----
-
-## System Architecture
-
-The system uses a centralised architecture where distributed IoT devices send sensor readings to Home Assistant through MQTT.
-
-Home Assistant processes these readings, displays the information on dashboards, and executes configured automation rules.
-
-### Architecture Diagram
-
-```text
-                 HOME IOT NETWORK
-                        |
-             +----------+----------+
-             |                     |
-             v                     v
-      UNDERGROUND TANK       OVERHEAD TANK
-        Float Sensors         Float Sensors
-             |                     |
-             v                     v
-        ESPEasy Board         ESPEasy Board
-             |                     |
-             +----------+----------+
-                        |
-                        | MQTT
-                        v
-                 MOSQUITTO BROKER
-                        |
-                        v
-               HOME ASSISTANT SERVER
-                   Linux / Docker
-                        |
-           +------------+------------+
-           |            |            |
-           v            v            v
-       DASHBOARDS   AUTOMATIONS   NOTIFICATIONS
-                        |
-                 +------+------+
-                 |             |
-                 v             v
-             SONOFF POWR2   HTTP RELAY
-                 |             |
-                 v             v
-              OHWT PUMP   DEEP WELL PUMP
-```
-
-### Communication Flow
-
-1. Float switches measure predefined water levels inside each tank.
-2. ESPEasy controllers read the sensor states.
-3. The controllers publish sensor data to MQTT topics.
-4. Eclipse Mosquitto handles MQTT messaging.
-5. Home Assistant receives and processes the readings.
-6. Template sensors convert float-switch states into water-level percentages.
-7. Automation rules evaluate the current readings and configured conditions.
-8. Home Assistant sends commands to the relevant pump controllers.
-9. Dashboards display device status, electrical readings, and historical data.
-
----
-
-## Home Assistant Dashboard Gallery
-
-The project includes dedicated dashboards for monitoring water tanks, motors, and other connected devices.
-
-### 1. Underground Water Tank (UGWT)
-
-The underground tank dashboard provides:
-
-- Water-level monitoring
-- Float-switch status
-- Pump monitoring and controls
-- Device connectivity information
-- Historical readings
-- Activity logs
-
-![Underground Water Tank Dashboard](screenshots/underground-water-tank.png)
-
-### 2. Overhead Water Tank (OHWT)
-
-The overhead tank dashboard provides:
-
-- Water-level percentage
-- Individual sensor states
-- Pump control and monitoring
-- Water-level history
-- Automation-related information
-
-![Overhead Water Tank Dashboard](screenshots/overhead-water-tank.png)
-
-### 3. Motor Monitoring
-
-The motor monitoring dashboard displays:
-
-- Pump operational status
-- Voltage measurements
-- Electrical current
-- Power consumption in watts
-- Historical electrical measurements
-
-![Motor Monitoring Dashboard](screenshots/motor-monitoring.png)
-
-### 4. Geyser Monitoring
-
-The geyser dashboard includes:
-
-- Temperature monitoring
-- Device connectivity
-- Sensor information
-- Historical temperature readings
-
-![Geyser Monitoring Dashboard](screenshots/geyser-monitoring.png)
-
----
-
-## Connected IoT Devices
-
-The project combines sensor boards and smart switching equipment.
-
-| Device | Purpose | Integration |
-|---|---|---|
-| GroundWater Controller | Underground tank sensing | ESPEasy / MQTT |
-| OHWater Controller | Overhead tank sensing | ESPEasy / MQTT |
-| OHWT Advance Pump | Water transfer to overhead tank | Sonoff POWR2 |
-| Deep Well Pump | Water supply to underground tank | HTTP / REST |
-| Pump Power Monitor | Voltage, current, and power readings | MQTT |
-| Geyser Controller | Water heater temperature monitoring | ESPEasy / MQTT |
-
-Each device is integrated into the central Home Assistant environment.
-
----
-
-## Water Level Monitoring
-
-The water tanks use discrete float switches installed at predefined positions.
-
-Home Assistant combines their states into water-level indicators.
-
-### Overhead Water Tank
-
-The overhead tank supports the following level points:
-
-`0% | 5% | 25% | 50% | 75% | 95% | 100%`
-
-Example Home Assistant sensor:
-
-`sensor.water_level_percent`
-
-### Underground Water Tank
-
-The underground tank supports the following level points:
-
-`0% | 25% | 50% | 75% | 95% | 100%`
-
-Example Home Assistant sensor:
-
-`sensor.groundwater_level_percent`
-
-These are discrete sensor-based level estimates rather than continuous volume measurements.
-
----
-
-## Pump Automation System
-
-Home Assistant coordinates water-level monitoring and selected pump operations using YAML-based automation rules.
-
-### 1. Automatic OHWT Pump Start
-
-The overhead water tank pump is configured to start when:
-
-- The tank level is at or below 25%.
-- The reading remains at that level for two minutes.
-- The pump is currently off.
-
-**Automation:** `ohwater_low_start`
-
-### 2. OHWT High-Level Cutoff
-
-The system requests pump shutdown when the overhead tank reaches 95%.
-
-The automation includes:
-
-- A water-level trigger
-- A pump-state trigger
-- A five-second qualifying hold
-- A periodic condition check every minute
-
-**Automation:** `ohwater_full_cutoff`
-
-### 3. Peak-Hour Pump Management
-
-The system includes a scheduled pump-control rule for the period:
-
-**6:00 PM – 10:00 PM**
-
-During this period, the OHWT pump is configured to stop at approximately 50% under normal conditions.
-
-A separate priority condition provides an exception when the underground tank is full and the deep-well pump is running.
-
-**Automation:** `ohwater_peak_hours_cutoff`
-
-### 4. Underground Tank High-Level Cutoff
-
-The deep-well pump has a configured high-level cutoff for when the underground water tank reaches 100%.
-
-The automation evaluates:
-
-- Underground water level
-- Deep-well pump state
-- Relevant overhead tank conditions
-- Periodic rechecks
-
-**Automation:** `deepwell_full_cutoff`
-
-### 5. Cross-Tank Priority Filling
-
-A priority automation coordinates overhead tank filling under selected conditions.
-
-The rule evaluates:
-
-- OHWT level at or below 20%
-- UGWT level at 100%
-- Deep-well pump running
-- OHWT pump currently off
-
-**Automation:** `ohwt_priority_fill_when_ugwt_full`
-
-These automations demonstrate event-driven control, conditional logic, sensor thresholds, and time-based operations.
-
-Actual pump protection also requires suitable hardware safeguards and system-specific validation.
-
----
-
-## Mobile Notification System
-
-Home Assistant supports water-level alerts through registered mobile devices.
-
-| Notification | Trigger | Configured Behaviour |
-|---|---|---|
-| OHWT Low | Level at or below 25% | Alert after two minutes |
-| OHWT High | Level at or above 95% | Alert after two minutes |
-| UGWT Low | Level at or below 25% | Alert after two minutes |
-| UGWT High | Level at or above 95% | Alert after two minutes |
-| UGWT Priority Low | Level below 50% | Repeating alert intended every 15 minutes |
-
-Notification rules are defined in YAML and can be adapted to different mobile devices.
-
-Delivery behaviour depends on the configured notification integrations and runtime connectivity.
-
----
-
-## MQTT Device Communication
-
-MQTT provides communication between the IoT devices and the Home Assistant server.
-
-### MQTT Integration
-
-The project uses MQTT for:
-
-- Water-level sensor states
-- Device availability indicators
-- Pump relay telemetry
-- Voltage monitoring
-- Current monitoring
-- Power monitoring
-
-### Example MQTT Topic Structure
-
-```text
-home/water/underground/level
-home/water/overhead/level
-
-home/pump/status
-home/pump/power
-home/pump/voltage
-home/pump/current
-
-home/devices/status
-```
-
-These topic names illustrate a generic MQTT structure and are not the actual production topic names.
-
-### Why MQTT?
-
-MQTT is well suited to IoT projects because it provides:
-
-- Lightweight messaging
-- Publish/subscribe communication
-- Support for multiple devices
-- Centralised message handling
-- Integration with Home Assistant
-- Flexibility for expanding the device network
-
----
-
-## Pump State Monitoring
-
-The project uses both MQTT telemetry and REST-based device communication.
-
-For the deep-well pump, the system includes a REST sensor that requests relay-state information at a configured interval.
-
-This enables Home Assistant to obtain device-reported relay status independently of MQTT event messages.
-
-The example configuration uses a ten-second polling interval.
-
-REST polling and MQTT monitoring provide software-level status feedback; physical motor operation must be verified separately where safety is important.
-
----
-
-## Project Development
-
-This project has involved designing and integrating several components of a home IoT environment.
-
-### Hardware Integration
-
-- Connecting float switches to microcontrollers
-- Configuring ESPEasy devices
-- Integrating Sonoff smart switches
-- Collecting motor electrical telemetry
-- Connecting devices to the local network
-
-### Server and Network Configuration
-
-- Installing and configuring Linux services
-- Deploying Home Assistant with Docker
-- Configuring the Mosquitto MQTT broker
-- Integrating ESP devices with the automation platform
-- Organising device communication and monitoring
-
-### Software and Automation
-
-- Writing Home Assistant YAML automations
-- Configuring MQTT sensors
-- Creating template entities
-- Integrating REST commands and sensors
-- Building dashboards
-- Configuring notifications
-- Implementing sensor-based automation logic
-
----
-
-## Repository Structure
-
-```text
-smart-water-management-iot/
-|
-|-- README.md
-|-- configuration.yaml
-|-- automations.yaml
-|-- .gitignore
-|-- LICENSE
-|
-+-- screenshots/
-    |-- underground-water-tank.png
-    |-- overhead-water-tank.png
-    |-- motor-monitoring.png
-    +-- geyser-monitoring.png
-```
-
-### Main Files
-
-| File | Description |
+| Low start | Starts the rooftop pump at ≤ 25%, only if the underground tank has water |
+| Full cutoff | Stops the rooftop pump at 95% and the deep-well pump at 100%, re-checked every minute |
+| Peak hours | 18:00–22:00: stops the rooftop pump at 50%, unless the underground tank is full and still filling |
+| Priority fill | Fills the rooftop tank when the underground tank is full and the deep-well pump is running |
+| **Dry-run protection** | Stops the rooftop pump if the underground tank is empty |
+| **Sensor offline** | Stops all pumps if a tank controller is offline for 1 minute |
+| **Max runtime** | Stops a pump that runs far longer than normal (stuck float switch) |
+| Alerts | Phone notifications for low and high levels and for every safety stop |
+
+## Dashboards
+
+| Underground tank | Rooftop tank |
 |---|---|
-| `README.md` | Project documentation |
-| `configuration.yaml` | Sanitised Home Assistant configuration example |
-| `automations.yaml` | Water-level and pump automation examples |
-| `.gitignore` | Excludes sensitive and runtime files |
-| `LICENSE` | MIT License |
-| `screenshots/` | Home Assistant dashboard images |
+| ![Underground tank dashboard](screenshots/underground-water-tank.png) | ![Rooftop tank dashboard](screenshots/overhead-water-tank.png) |
+| **Pump power monitoring** | **Geyser** |
+| ![Motor monitoring dashboard](screenshots/motor-monitoring.png) | ![Geyser dashboard](screenshots/geyser-monitoring.png) |
 
-The YAML files are provided as implementation examples and require adaptation and validation before use.
+Screenshots are from the live system, so some entity names differ from the example configuration.
 
----
+## Tech stack
 
-## Security and Configuration
+Home Assistant · MQTT (Mosquitto) · ESP8266 / ESP32 · ESPEasy · Sonoff POWR2 · Linux · Docker · YAML · GitHub Actions
 
-The public repository uses example configuration values rather than publishing private server addresses or credentials.
+## Files
 
-Sensitive Home Assistant files must remain outside the repository, including:
+| File | Contents |
+|---|---|
+| `configuration.yaml` | Sensors, level templates, pump switches, notifications |
+| `automations.yaml` | Pump control, safety rules and alerts |
+| `secrets.yaml.example` | The private values to fill in (pump relay URLs) |
+| `scripts/check_entities.py` | Checks that every entity used by an automation exists |
+| `screenshots/` | Dashboard screenshots |
 
-```text
-secrets.yaml
-.storage/
-.cloud/
-.env
-*.db
-*.db-*
-*.log
-```
+## Security and safety
 
-The system should be deployed with appropriate authentication, network restrictions, relay protection, and hardware safety measures.
-
-The published examples are not intended for direct installation without environment-specific configuration.
-
----
-
-## Future Development
-
-The project provides a foundation for additional home automation capabilities.
-
-Potential improvements include:
-
-- Expanded IoT device support
-- Enhanced water-level monitoring
-- More detailed power consumption analysis
-- Additional automation and scheduling options
-- Improved device availability monitoring
-- Enhanced dashboard visualisation
-- More advanced historical data analysis
-- Additional hardware-level pump protections
-- Improved remote monitoring and administration
-
----
-
-## Skills Demonstrated
-
-This project demonstrates practical experience in:
-
-- Linux server administration
-- Home Assistant
-- Docker
-- MQTT / Mosquitto
-- ESP8266 / ESP32
-- ESPEasy firmware
-- IoT device integration
-- Sonoff smart devices
-- YAML automation
-- HTTP and REST integration
-- Sensor monitoring
-- Electrical telemetry
-- Troubleshooting and integration testing
-- Git and GitHub
-- Technical documentation
-
----
-
-## Disclaimer
-
-This repository showcases a personal IoT automation project for educational and portfolio purposes.
-
-Published configurations are sanitised examples and require appropriate hardware protection, secure configuration, and testing before deployment. The software automations are not independently certified as fail-safe pump controls.
-
----
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
-
----
+- No real addresses, credentials or device IDs are published; private values belong in `secrets.yaml` (git-ignored).
+- In a real installation, use an MQTT username and password, keep IoT devices on a separate network, and protect the ESPEasy web interface.
+- Software automations are not a substitute for hardware protection: use a dry-run relay, overload protection and proper wiring.
 
 ## Author
 
-**Ahsan Baig Chughtai**
+**Ahsan Baig Chughtai** · [GitHub](https://github.com/abchughtai786)
 
-GitHub: [@abchughtai786](https://github.com/abchughtai786)
+## License
 
-Interests: Linux, Python, IoT, Automation, AI, and Software Engineering.
+[MIT](LICENSE)
